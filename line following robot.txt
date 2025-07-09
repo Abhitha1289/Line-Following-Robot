@@ -1,0 +1,67 @@
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Step 1: Create path with black line positioned where center sensor can see it
+def create_path_image():
+    img = np.ones((300, 501), dtype=np.uint8) * 255  # White background
+    # Create a centered black line that's narrow enough to only be detected by the center sensor
+    cv2.line(img, (0, 250), (500, 250), 0, 10)  # y=250 (center), thickness=10
+    return img
+
+# Step 2: Simulate 3 virtual IR sensors from bottom region
+def get_sensor_values(img):
+    height, width = img.shape
+    roi = img[height - 50:height, :]  # bottom 50 pixels
+    third_w = width // 3
+
+    left = roi[:, :third_w]
+    center = roi[:, third_w:2*third_w]
+    right = roi[:, 2*third_w:]
+
+    sensors = [np.mean(left), np.mean(center), np.mean(right)]
+    print(f"Sensor Values: Left={sensors[0]:.1f}, Center={sensors[1]:.1f}, Right={sensors[2]:.1f}")
+    return sensors
+
+# Step 3: Line following logic
+def follow_line(sensor_values, threshold=100):
+    left, center, right = sensor_values
+    # Only consider center sensor for decision
+    if center < threshold:
+        return "Forward"
+    else:
+        return "Stop"
+
+# Step 4: Run the simulation
+def simulate_robot(steps=30):
+    img = create_path_image()
+    decisions = []
+
+    for _ in range(steps):
+        sensors = get_sensor_values(img)
+        decision = follow_line(sensors)
+        decisions.append(decision)
+
+    return decisions
+
+# Step 5: Convert to numeric
+def decision_to_num(decision):
+    return {
+        "Left": -1,
+        "Forward": 0,
+        "Right": 1,
+        "Stop": 2
+    }.get(decision, 2)
+
+# Run + Plot
+decisions = simulate_robot(steps=30)
+decision_nums = [decision_to_num(d) for d in decisions]
+
+plt.figure(figsize=(10, 4))
+plt.plot(decision_nums, marker='o', linestyle='-')
+plt.title("Line Follower Robot Decision Over Time")
+plt.xlabel("Time Step")
+plt.ylabel("Decision")
+plt.yticks([-1, 0, 1, 2], ["Left", "Forward", "Right", "Stop"])
+plt.grid(True)
+plt.show()
